@@ -16,11 +16,12 @@ namespace TiciMax.Application.RabbitMQ
 	{
 
 		private readonly RabbitMQService _rabbitMQService;
-		private readonly IConfiguration _movementReportService;
-		public RabbitMQConsumer(IConfiguration configuration, IConfiguration movementReportService)
+		private readonly IConfiguration _configuration;
+
+		public RabbitMQConsumer(IConfiguration configuration)
 		{
 			_rabbitMQService = new RabbitMQService(configuration);
-			_movementReportService = movementReportService;
+			_configuration = configuration;
 		}
 
 		public void MovementRepoertConsum(string queueName)
@@ -28,12 +29,12 @@ namespace TiciMax.Application.RabbitMQ
 			var connection = _rabbitMQService.GetRabbitMQConnection();
 
 			var channel = connection.CreateModel();
-				
+
 			var consumer = new AsyncEventingBasicConsumer(channel);
 			// Received event'i sürekli listen modunda olacaktır.
 			consumer.Received += async (model, ea) =>
 			{
-						
+
 				var message = Encoding.UTF8.GetString(ea.Body.Span);
 
 				var movement = JsonConvert.DeserializeObject<Movement>(message);
@@ -42,10 +43,10 @@ namespace TiciMax.Application.RabbitMQ
 				{
 					bool update = true;
 
-					using (AppDbContext context = new AppDbContext(_movementReportService))
+					using (AppDbContext context = new AppDbContext(_configuration))
 					{
 
-						var report = await context.Set<MovementReport>().FirstOrDefaultAsync(a => a.UserId == movement.UserId && a.Day == movement.Time.Date);
+						var report = await context.MovementReports.FirstOrDefaultAsync(a => a.UserId == movement.UserId && a.Day == movement.Time.Date);
 						if (report == null)
 						{
 							report = new MovementReport();
@@ -54,7 +55,7 @@ namespace TiciMax.Application.RabbitMQ
 
 						report.UserId = movement.UserId;
 						report.Day = movement.Time.Date;
-						if (movement.MovementType == MovementType.Entry &&(report.EntryTime==null || movement.Time< report.EntryTime)) report.EntryTime = movement.Time;
+						if (movement.MovementType == MovementType.Entry && (report.EntryTime == null || movement.Time < report.EntryTime)) report.EntryTime = movement.Time;
 						else if (movement.MovementType == MovementType.Exit && (report.ExitTime == null || movement.Time > report.ExitTime)) report.ExitTime = movement.Time;
 
 						if (report.EntryTime != null && report.ExitTime != null)
@@ -72,15 +73,15 @@ namespace TiciMax.Application.RabbitMQ
 			};
 
 			channel.BasicConsume(queueName, false, consumer);
-					
+
 		}
 	}
 
 	public class Deneme
 	{
-        public Deneme()
-        {
-            
-        }
-    }
+		public Deneme()
+		{
+
+		}
+	}
 }

@@ -29,7 +29,7 @@ namespace TiciMax.EntityFrameworkCore.EntityFrameworkCore
 		}
 
 		public DbSet<Movement> Movements { get; set; }
-		//public DbSet<MovementReport> MovementReports { get; set; }
+		public DbSet<MovementReport> MovementReports { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
